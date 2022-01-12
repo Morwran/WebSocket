@@ -9,31 +9,65 @@
   
         <style type="text/css">
            .knopka {
-           height: 40px;
-           width: 120px;
-           text-align: center;
-           line-height: 2.1;
-           cursor: pointer;
-           border: 1px solid #999;
-           border-radius: 10px;}
-           v{}
+            height: 40px;
+            width: 120px;
+            text-align: center;
+            line-height: 2.1;
+            cursor: pointer;
+            border: 1px solid #999;
+            border-radius: 10px;
+            box-shadow: 0px 0px 12px 2px rgba(0, 0, 0, .2);
+            margin: 5px;
+            -moz-user-select: none;
+            -khtml-user-select: none;
+            -webkit-user-select: none;
+            user-select: none;
+            }
+            .knopka:hover {background-color: rgb(168 237 251 / 54%) !important; }
+            .input_txt {
+                margin-top: 12px;
+                border-radius: 5px;
+                border: 2px solid #999;
+                background-color: rgb(235 235 235 / 54%);
+                box-shadow: 0px 0px 12px 2px rgba(0, 0, 0, .2);
+            }
+            .main_title {
+                font-size: max(1.6em, min(1em, calc(100vw * 1.1 / 75)));
+            }
+            .chat_title {
+                font-weight: bold;
+                font-size: 1.2em;
+                opacity: 0.7;
+            }
+            v{}
         </style>
         <script type="text/javascript">
             $(function() {
+                var ver = "WebSocket v1.0";
+                $('h1').text(ver);
                 window.WebSocket = window.WebSocket || window.MozWebSocket;
                 var websocket = new WebSocket('ws://192.168.1.151:80/ws');
 
                 websocket.onopen = function () {
                     $('h1').css('color', '#65c178'); /* green */
+                    var txt = ver;
+                    txt += " (online)";
+                    $('h1').text(txt);
                 };
 
                 websocket.onclose = function (e) {
                     console.log("WebSocket: ", e)
-                    $('h1').css('color', 'blue'); /* red */
+                    $('h1').css('color', '#000000'); /* black */
+                    var txt = ver;
+                    txt += " (offline)";
+                    $('h1').text(txt);
                 };
 
                 websocket.onerror = function () {
                     $('h1').css('color', '#fe457e'); /* red */
+                    var txt = ver;
+                    txt += " (error)";
+                    $('h1').text(txt);
      
                 };
 
@@ -51,6 +85,11 @@
                 $("input[id='text-count']").keydown(function count() {
                     number = $("input[id='text-count']").val().length + 1;
                     $("#count").html(" The number of bytes: " + number);
+                });
+
+                $('.upd').click(function(e) {
+                    e.preventDefault();
+                    window.location.reload();
                 });
 
                 $('.hi').click(function(e) {
@@ -74,12 +113,19 @@
         <title>WebSocket</title>
         </head>
     <body>
-        <h1>WebSocket</h1>
+        <center>
+        <h1 class="main_title"></h1>
      
-          <div class='knopka hi'>Hi...</div>
+          <div class='knopka upd'>Update</div>
+          <div class='knopka hi'>Say Hi...</div>
           <div class='knopka close'>Close</div>
           <div class='knopka ping'>Call PING</div>
-          <div class='knopka Send'>Send</div> <input type="text" id="text-count"/><span id="count"></span>
+          <div class='knopka Send'>Send</div>
+          <div>
+          <span class="chat_title">Chat: </span>
+          <input type="text" class="input_txt" id="text-count"/><span id="count"></span>
+          </div>
           <v></v>
+        </center>  
     </body>
 </html>

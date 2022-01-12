@@ -1,11 +1,16 @@
+TESTING = 0
 
 BIN = websocket
 OBJ = websocket.o
-CFLAGS = -Wall -lm
+CFLAGS = -Wall
 CC = gcc
 
+ifeq ($(TESTING), 1)
+CFLAGS += -DTESTING
+endif
+
 # LDFLAGS = -L/usr/lib -lssl -lcrypto
-LDFLAGS =
+LDFLAGS = -lm
 
 all: $(BIN)
 $(BIN): $(OBJ)

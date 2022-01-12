@@ -14,6 +14,7 @@
 #include "websocket.h"
 #include <sys/sendfile.h>
 #include <fcntl.h>
+#include <stdbool.h>
 //#include <openssl/sha.h>
 
 #ifdef TESTING
@@ -299,81 +300,127 @@ static void send_ws_text_msg(int fd, const char *msg)
 
 }
 
+#ifdef TESTING
+static int sin_dump(int t){
+	int A = 2;
+	double S = A*sin(t);
+	printf("S %.2f\n", S);
+	return (int)(S*100);
+}
+#endif
+
 static void ws_proc(int fd){
 		LogPrint("WS Process start for Client ID %d\n", fd);
 		unsigned char inbuf[SW_BUF];
+		bool is_start_byte_tr = false;
+		fd_set readfds;
+		int ret = -1;
+		struct timeval tv;
+
+#ifdef TESTING
+		int t = 0;
+#endif
 
 		for(;;){
-		//if(1){
-			memset(inbuf, 0, SW_BUF);
+			FD_ZERO(&readfds);
+			FD_SET(fd, &readfds);
 
-			long rcv_b = read(fd, inbuf, SW_BUF - 1);
+			tv.tv_sec = 1;
+			tv.tv_usec = 0;
 
-			if(rcv_b < 0){
+			if ((ret = select(fd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &tv)) < 0) {
+				LogPrint("Can't waited socket: %s", strerror(errno));
+        break;
+      }
+
+      if (FD_ISSET(fd, &readfds)) {
+
+				memset(inbuf, 0, SW_BUF);
+
+				long rcv_b = read(fd, inbuf, SW_BUF - 1);
+
+				if(rcv_b < 0){
 					WrnPrint("Connection closed. %s", strerror(errno));
 					return;
+				}
+
+				if(rcv_b > 0){
+					unsigned char masking_key[4] = {0};
+      	  unsigned char opcode;
+      	  unsigned short payload_len;
+      	  printf("RCV: 0x%X%X\n", inbuf[0], inbuf[1]);
+      	  opcode = WS_OPCODE_RCVD(inbuf);
+      	  printf("FIN: 0x%02X\n", WS_FIN_RCVD(inbuf));
+      	  printf("RSV1: 0x%02X\n", WS_RCV1_RCVD(inbuf));
+      	  printf("RSV2: 0x%02X\n", WS_RCV2_RCVD(inbuf));
+      	  printf("RSV3: 0x%02X\n", WS_RCV3_RCVD(inbuf));
+      	  printf("Opcode: 0x%02X\n", opcode);
+	
+      	  payload_len = WS_LENGTH_RCVD(inbuf);
+      	  printf("payload_len: %u 0x%x\n", payload_len, payload_len);
+      	  printf("Mask: 0x%02x\n", WS_MSK_RCVD(inbuf));
+	
+      	  if(opcode == WS_CLOSING_FRAME) // closing connection
+      	  {
+      	   		WrnPrint("Connection closed by Client ID %d", fd);
+							return;
+      	  }
+	
+      	  if(opcode == WS_TEXT_FRAME) // receive text from client
+      	  {
+      	   		
+      	   		LogPrint("Received TEXT Frame from Client ID %d", fd);
+      	   		if(payload_len < 126){
+      	   			memcpy(masking_key, &inbuf[2], sizeof masking_key);
+	
+      	   		}
+      	   		
+      	   		// thus this is not a lenght but this is a code means 
+      	   		// that length is more then 125 bytes 
+      	   		if(payload_len == 126){
+      	   			// unsigned short payload_len_s = *(unsigned short *)&inbuf[2];
+      	   			payload_len = WS_LENGTH126_RCVD(inbuf);
+      	   			printf("payload_len: %u 0x%x\n", payload_len, payload_len);
+      	   			memcpy(masking_key, &inbuf[4], sizeof masking_key);
+	
+      	   		}
+      	   		char *payload = calloc(1, payload_len + 1);
+      	   		unsigned int i = (payload_len < 126) ? 6 : 8, pl = 0;
+      	      for(; pl < payload_len; i++, pl++)
+      	      {
+      	         	payload[pl] = inbuf[i]^masking_key[pl % 4]; 
+      	      }
+	
+      	      payload[payload_len] = '\0';
+					         		
+      	   		printf("PL: %s\n", payload);
+	
+      	   		if(!strcmp(payload, "start tr"))
+      	   			is_start_byte_tr = true;
+      	   		if(!strcmp(payload, "stop tr"))
+      	   			is_start_byte_tr = false;
+	
+      	   		send_ws_text_msg(fd, payload);
+	
+      	   		free(payload);
+      	  		payload = NULL;
+	
+      	  }
+	
+				}
 			}
 
-			if(rcv_b > 0){
-				unsigned char masking_key[4] = {0};
-        unsigned char opcode;
-        unsigned short payload_len;
-        printf("RCV: 0x%X%X\n", inbuf[0], inbuf[1]);
-        opcode = WS_OPCODE_RCVD(inbuf);
-        printf("FIN: 0x%02X\n", WS_FIN_RCVD(inbuf));
-        printf("RSV1: 0x%02X\n", WS_RCV1_RCVD(inbuf));
-        printf("RSV2: 0x%02X\n", WS_RCV2_RCVD(inbuf));
-        printf("RSV3: 0x%02X\n", WS_RCV3_RCVD(inbuf));
-        printf("Opcode: 0x%02X\n", opcode);
-
-        payload_len = WS_LENGTH_RCVD(inbuf);
-        printf("payload_len: %u 0x%x\n", payload_len, payload_len);
-        printf("Mask: 0x%02x\n", WS_MSK_RCVD(inbuf));
-
-        if(opcode == WS_CLOSING_FRAME) // closing connection
-        {
-         		WrnPrint("Connection closed by Client ID %d", fd);
-						return;
-        }
-
-        if(opcode == WS_TEXT_FRAME) // receive text from client
-        {
-         		
-         		LogPrint("Received TEXT Frame from Client ID %d", fd);
-         		if(payload_len < 126){
-         			memcpy(masking_key, &inbuf[2], sizeof masking_key);
-
-         		}
-         		
-         		// thus this is not a lenght but this is a code means 
-         		// that length is more then 125 bytes 
-         		if(payload_len == 126){
-         			// unsigned short payload_len_s = *(unsigned short *)&inbuf[2];
-         			payload_len = WS_LENGTH126_RCVD(inbuf);
-         			printf("payload_len: %u 0x%x\n", payload_len, payload_len);
-         			memcpy(masking_key, &inbuf[4], sizeof masking_key);
-
-         		}
-         		char *payload = calloc(1, payload_len + 1);
-         		unsigned int i = (payload_len < 126) ? 6 : 8, pl = 0;
-            for(; pl < payload_len; i++, pl++)
-            {
-               	payload[pl] = inbuf[i]^masking_key[pl % 4]; 
-            }
-
-            payload[payload_len] = '\0';
-				         		
-         		printf("PL: %s\n", payload);
-
-         		send_ws_text_msg(fd, payload);
-
-         		free(payload);
-        		payload = NULL;
-
-        }
-
+			if(is_start_byte_tr){
+#ifdef TESTING
+				char dump_buf[10];
+				snprintf(dump_buf, sizeof dump_buf, "%d", sin_dump(t));
+				send_ws_text_msg(fd, dump_buf);
+				printf("is_start_byte_tr %u\n", is_start_byte_tr);
+				t++;
+#endif
 			}
 		}
+		LogPrint("Leave ws proc\n");
 }
 
 static void route(int fd, const char * buf){
@@ -400,7 +447,6 @@ static void route(int fd, const char * buf){
 	else if(strstr(buf, "GET /ws ")) 
 	{
 
-		#if 1
 		char * ws_key_cli_str = strstr(buf, WS_KEY);
 		if(ws_key_cli_str){
 			ws_key_cli_str += strlen(WS_KEY);
@@ -447,7 +493,7 @@ static void route(int fd, const char * buf){
 			LogPrint("Leave Client ID %d\n", fd);
 
 		}
-		#endif
+
 	}
 	else{
 		if(send(fd, response_403, (int)strlen(response_403), MSG_NOSIGNAL) == -1){
@@ -459,7 +505,7 @@ static void route(int fd, const char * buf){
 
 int main(int argc, char const *argv[])
 {
-	/* code */
+	/* code */	
 	int listenfd, connfd;
 	pid_t child_pid;
 	struct sockaddr_in addr_cli, addr_srv;
@@ -486,6 +532,10 @@ int main(int argc, char const *argv[])
 	}
 
 	LogPrint("Server start at port: %d, addr %s", SERV_PORT, inet_ntoa(addr_srv.sin_addr));
+
+#ifdef TESTING
+	LogPrint("APP UNDER TESTS!\n");
+#endif	
 
 	for(;;){
 		if((connfd=accept(listenfd, (struct sockaddr *)&addr_cli, &sin_len)) < 0){
