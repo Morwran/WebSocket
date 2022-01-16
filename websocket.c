@@ -27,6 +27,7 @@
 #define SW_BUF 65552
 #define ROOT_NAME "index.html"
 #define ROOT_PATH "www/"
+#define SERVER_ROOT "./"
 
 char buffer[BUFSIZE] = {0};
 
@@ -413,7 +414,7 @@ static void ws_proc(int fd){
 			if(is_start_byte_tr){
 #ifdef TESTING
 				char dump_buf[10];
-				snprintf(dump_buf, sizeof dump_buf, "%d", sin_dump(t));
+				snprintf(dump_buf, sizeof dump_buf, "%d %d", t, sin_dump(t));
 				send_ws_text_msg(fd, dump_buf);
 				printf("is_start_byte_tr %u\n", is_start_byte_tr);
 				t++;
@@ -443,6 +444,56 @@ static void route(int fd, const char * buf){
 		send_file(fd, path);
 		free(path);
 		path = NULL;
+	}
+	else if(strstr(buf, "GET /") && 
+		(strstr(buf, ".js") || strstr(buf, ".css") || 
+			strstr(buf, ".png") || strstr(buf, ".ico")))
+	{
+			char *ptrName = strstr(buf, "GET /");
+			ptrName += 5;
+			printf("ptrName: %s\n", ptrName);
+			char *fileName = strsep(&ptrName, " ");
+			printf("fileName %s\n", fileName);
+			size_t len_path = strlen(fileName) + strlen(SERVER_ROOT) + 1;
+			char *filePath = calloc(1, len_path);
+			if(!filePath){
+				WrnPrint("Alloc mem err. %s", strerror(errno));
+				return;
+			}
+			snprintf(filePath, len_path, "%s%s", SERVER_ROOT, fileName);
+			printf("filePath %s\n", filePath);
+
+			if(!access(filePath, F_OK)){
+					printf("accessed!\n");
+					if(strstr(filePath, ".js")){
+						if(send(fd, response_js, (int)strlen(response_js), MSG_NOSIGNAL) == -1){
+							WrnPrint("Send response is fail. %s", strerror(errno));
+						}
+					}
+					else if(strstr(filePath, ".css")){
+						if(send(fd, response_css, (int)strlen(response_css), MSG_NOSIGNAL) == -1){
+							WrnPrint("Send response is fail. %s", strerror(errno));
+						}
+					}
+					else if(strstr(filePath, ".png")){
+						if(send(fd, response_img, (int)strlen(response_img), MSG_NOSIGNAL) == -1){
+							WrnPrint("Send response is fail. %s", strerror(errno));
+						}
+					}
+					else if(strstr(filePath, ".ico")){
+						if(send(fd, response_xicon, (int)strlen(response_xicon), MSG_NOSIGNAL) == -1){
+							WrnPrint("Send response is fail. %s", strerror(errno));
+						}
+					}
+					send_file(fd, filePath);
+			}else{
+				printf("not accessed!\n");
+				if(send(fd, response_403, (int)strlen(response_403), MSG_NOSIGNAL) == -1){
+					WrnPrint("Send response_403 is fail. %s", strerror(errno));
+				}
+			}
+			free(filePath);
+			filePath = NULL;
 	}
 	else if(strstr(buf, "GET /ws ")) 
 	{

@@ -1,27 +1,42 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <meta charset="utf-8">
-        <!--<link rel="stylesheet" href="style.css" type="text/css" />-->
-        <!-- <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" /> -->
-        <!--<script src="jquery.js"></script>-->
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type"> 
+        <meta content="utf-8" http-equiv="encoding"> 
+
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+        <script type="text/javascript" src="www/dygraph.min.js"></script>
+        <link rel="stylesheet" src="www/dygraph.css" />
   
         <style type="text/css">
            .knopka {
-            height: 40px;
-            width: 120px;
-            text-align: center;
-            line-height: 2.1;
-            cursor: pointer;
-            border: 1px solid #999;
-            border-radius: 10px;
-            box-shadow: 0px 0px 12px 2px rgba(0, 0, 0, .2);
-            margin: 5px;
-            -moz-user-select: none;
-            -khtml-user-select: none;
-            -webkit-user-select: none;
-            user-select: none;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                /* position: relative; */
+                /* top: 50%; */
+                /* transform: translateY(-50%); */
+                min-height: 40px;
+                min-width: 120px;
+                height: 80px;
+                max-width: 360px;
+                vertical-align: middle;
+                text-align: center;
+                font-size: 150%;
+                /* font-size: 3vw; */
+                /* font-size: max(0.5em, min(4em, calc(100vw * 4 / 150))); */
+                /* font-size: max(1.6em, min(1em, calc(100vw * 1.1 / 80))); */
+                /* text-align: center; */
+                /* line-height: 80px; */
+                cursor: pointer;
+                border: 1px solid #999;
+                border-radius: 10px;
+                box-shadow: 0px 0px 12px 2px rgba(0, 0, 0, .2);
+                margin: 5px;
+                -moz-user-select: none;
+                -khtml-user-select: none;
+                -webkit-user-select: none;
+                user-select: none;
             }
             .knopka:hover {background-color: rgb(168 237 251 / 54%) !important; }
             .input_txt {
@@ -32,21 +47,98 @@
                 box-shadow: 0px 0px 12px 2px rgba(0, 0, 0, .2);
             }
             .main_title {
-                font-size: max(1.6em, min(1em, calc(100vw * 1.1 / 75)));
+                font-size: max(1.6em, min(4em, calc(100vw * 4 / 150)));
             }
             .chat_title {
                 font-weight: bold;
-                font-size: 1.2em;
+                /*font-size: 1.2em;*/
+                font-size: max(1.3em, min(4em, calc(100vw * 4 / 190)));
                 opacity: 0.7;
             }
+
+            .box_send{
+                display: table;
+                min-height: 40px;
+                min-width: 120px;
+                height: 80px;
+                max-width: 360px;
+                /*width: 50%;*/
+                /*position: absolute; */
+                margin:10px 5% 10px 5%;
+                /*text-align: left;*/
+                /*z-index:3;*/
+                opacity: 1;
+            }
+
+            .Send{
+                float: left;
+                margin-left: 10px;
+                -moz-user-select: none;
+                -khtml-user-select: none;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+            
+            .box_send_row {
+              display: table-row;
+            }
+            
+            .divTableCell, .divTableHead {
+              
+              display: table-cell;
+              
+            }
+            
+            .box_send_body {
+              display: table-row-group;
+            }
+
             v{}
         </style>
         <script type="text/javascript">
             $(function() {
                 var ver = "WebSocket v1.0";
                 $('h1').text(ver);
+                $("textarea[id='text-count']").val('');
                 window.WebSocket = window.WebSocket || window.MozWebSocket;
-                var websocket = new WebSocket('ws://192.168.1.151:80/ws');
+                var websocket = new WebSocket('ws://192.168.0.106:80/ws');
+
+                var data = [];
+
+                data.push([0, 0]);
+
+                var g = new Dygraph(document.getElementById("myChart"), data,
+                            {
+                                drawPoints: true,
+                                showRoller: false,
+                                drawGrid: true,
+                                gridLineColor: "rgb(130,201,242)",
+                                animatedZooms: true,
+                                fillGraph: true,
+                                stackedGraph: false,
+                                
+                                title: "Sin(t)",
+                                xlabel: 't',
+                                ylabel: 'A',
+                                legend: 'follow',
+                                showRangeSelector: false,
+                    
+                                //colors: ["#00A0B0", "#6A4A3C", "#CC333F", "#82C9F2"],
+                                //errorBars: true,
+                                //fractions: true,
+                                //rollPeriod: 15,
+                                //valueRange: [0.0, 1.2],
+                                animatedZooms: true,
+                                highlightSeriesBackgroundAlpha: 0.5,
+                                highlightSeriesBackgroundColor: "rgb(221,241,253)",
+                                colors: "rgb(255,255,255)",
+                                //labels: ['t', 'A'],
+                                highlightSeriesOpts: {
+                                    strokeWidth: 3,
+                                    strokeBorderWidth: 1,
+                                    highlightCircleSize: 5
+                                }
+                            });
 
                 websocket.onopen = function () {
                     $('h1').css('color', '#65c178'); /* green */
@@ -72,19 +164,48 @@
                 };
 
                 websocket.onmessage = function (message) {
-                    console.log(message.data);
-                    $('v').append($('<p>', { text: message.data }));
+                    
+                    if(!$('.test').hasClass('on')){
+                        console.log(message.data);
+                        if(message.data != "stop tr")
+                            $('v').append($('<p>', { text: message.data }));
+                    }
+                    else{
+                        var rcv = message.data.split(' ');
+                        
+                        var x = parseInt(rcv[0], 10);  // current time
+                        var y = parseInt(rcv[1], 10) / 100;
+                        console.log("x y:", x, y);
+                        if(data.length > 25)
+                            data.shift();
+                        data.push([x,y]);
+                        g.updateOptions( { 'file': data } );
+                    }
                 };
+
+                function ScrollById(name){
+                    var scroll2 = "#" + name;
+                    $('html, body').animate({ scrollTop: $(scroll2).offset().top }, 500);
+                }
                 
                 $('.Send').click(function(e) {
                     e.preventDefault();
-                    websocket.send($('input').val());
-                    $('input').val('');
+                    if($('.input_txt').val() != ''){
+                        websocket.send($('.input_txt').val());
+                        $('.input_txt').val('');
+                        $("#count").html('');
+                    }
+                    
                 });
 
-                $("input[id='text-count']").keydown(function count() {
-                    number = $("input[id='text-count']").val().length + 1;
-                    $("#count").html(" The number of bytes: " + number);
+                $("textarea[id='text-count']").keyup(function count() {
+                    
+                    number = $("textarea[id='text-count']").val().split('').length;
+
+                    if(number != 0)
+                        $("#count").html(" The number of bytes: " + number);
+                    else
+                        $("#count").html('');
                 });
 
                 $('.upd').click(function(e) {
@@ -92,20 +213,51 @@
                     window.location.reload();
                 });
 
+                $('.test').click(function(e) {
+                    e.preventDefault();
+
+                    if($(this).hasClass('off')){
+                        $(this).removeClass('off');
+                        $(this).addClass('on');
+                        $(this).text('Test off');
+                        $(this).css('background-color','rgb(168 237 251 / 54%');
+                        $('#myChart').slideDown(500);
+                        $('#myChart').animate({opacity: 1}, 500);
+                        ScrollById("myChart");
+
+                        websocket.send("start tr");
+                    }
+                    else if($(this).hasClass('on')){
+                        $(this).removeClass('on');
+                        $(this).addClass('off');
+                        $(this).text('Test on');
+                        $(this).css('background-color','#ffffff');
+                        $('#myChart').slideUp(500);
+                        $('#myChart').animate({opacity: 0}, 500);
+                        ScrollById("top_page");
+                        //data = [];
+                        //data.push([0,0]);
+                        websocket.send("stop tr");
+                    }
+                });
+
                 $('.hi').click(function(e) {
                     e.preventDefault();
                     websocket.send("hi");
                 });
 
-                $('.ping').click(function(e) {
-                    e.preventDefault();
-                    websocket.send("ping");
-                });
 
                 $('.close').click(function(e) {
                     e.preventDefault();
                     //websocket.send("close");
                     websocket.close();
+                    if($('.test').hasClass('on')){
+                        $('.test').removeClass('on');
+                        $('.test').addClass('off');
+                        $('.test').text('Test on');
+                        $('.test').css('background-color','#ffffff');
+                        $('#myChart').hide(500);
+                    }
                 });
 
             });
@@ -114,18 +266,53 @@
         </head>
     <body>
         <center>
-        <h1 class="main_title"></h1>
+        <h1 id="top_page" class="main_title"></h1>
      
           <div class='knopka upd'>Update</div>
           <div class='knopka hi'>Say Hi...</div>
+          <div class='knopka test off'>Test On</div>
+          <!-- <div class='knopka Send'>Send</div> -->
           <div class='knopka close'>Close</div>
-          <div class='knopka ping'>Call PING</div>
-          <div class='knopka Send'>Send</div>
-          <div>
-          <span class="chat_title">Chat: </span>
-          <input type="text" class="input_txt" id="text-count"/><span id="count"></span>
-          </div>
-          <v></v>
+
+
+        <div class="box_send">
+            <div class="box_send_body">
+                <div class="box_send_row">
+                
+                        <div class="divTableCell" style="width: 80%;">
+                            <div id="send_chat">
+                                <center>
+                                    <textarea style="resize:none" class="input_txt" maxlength="200" rows="3" cols="33" placeholder="Start typing..." id="text-count">
+                                    </textarea>
+                                    <span id="count"></span>
+                                </center>
+                            </div>
+                        </div>
+                        <div class="divTableCell" style="width: 20%;">
+                            <div id="send_btn" class="Send" style="float: left; ">
+                                <center>
+                                    <img src="www/send.png" width="30" height="30"><br>
+                                    <span style="font-size: 9pt;">Send</span>
+                                </center>
+                            </div>    
+                    
+                        </div>
+                </div>
+            </div>
+        </div>
+
+<!--         <div>
+          <input type="text" class="input_txt" placeholder="Start typing..." value="" id="text-count"/>
+        </div>
+        <div>
+            <span id="count"></span>
+        </div> -->
+        <v></v>
+        <div id="myChart" style="width:800px; height:400px; display: block; opacity: 0; margin-top: 50px;"></div>
+<!--         <div>
+            <canvas id="myChart" style="display: none;"></canvas>
+        </div> -->
+        
         </center>  
     </body>
 </html>
