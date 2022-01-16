@@ -554,12 +554,39 @@ static void route(int fd, const char * buf){
 	}
 }
 
-int main(int argc, char const *argv[])
+static void usage(){
+	fprintf(stderr,"Usage:\n");
+	fprintf(stderr,"\t /usr/sbin/websocket [-p] [0 ... 65535]\n");
+	fprintf(stderr,"\t Where -p is a websocket port (usually 86)\n");
+}
+
+int main(int argc, char *argv[])
 {
-	/* code */	
+	/* code */
+	int opt;
+	int port = SERV_PORT;
 	int listenfd, connfd;
 	pid_t child_pid;
 	struct sockaddr_in addr_cli, addr_srv;
+
+		while((opt = getopt(argc, argv, "p:")) != -1) 
+    { 
+        if(opt == 'p'){
+        	int tmp_p = atoi(optarg);
+        	if(tmp_p >=0 && tmp_p < 65536)
+        		port = tmp_p;
+        	else{
+        		usage();
+        		exit(-1);	
+        	}
+
+        }
+        else if(opt == '?'){
+        	printf("unknown option: %c\n", optopt);
+        	usage();
+        	exit(-1);
+        }
+    } 
 
 	socklen_t sin_len = sizeof(addr_cli);
 	listenfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -570,7 +597,7 @@ int main(int argc, char const *argv[])
 	memset(&addr_srv, 0, sizeof(addr_srv));
 	addr_srv.sin_family = AF_INET;
 	addr_srv.sin_addr.s_addr = INADDR_ANY;
-	addr_srv.sin_port = htons(SERV_PORT);
+	addr_srv.sin_port = htons(port);
 	
 	if(bind(listenfd, (struct sockaddr *)&addr_srv, sizeof(addr_srv)) == -1){
 		close(listenfd);
@@ -582,7 +609,7 @@ int main(int argc, char const *argv[])
 		print_and_exit("Fail soc listen! %s", strerror(errno));
 	}
 
-	LogPrint("Server start at port: %d, addr %s", SERV_PORT, inet_ntoa(addr_srv.sin_addr));
+	LogPrint("Server start at port: %d, addr %s", port, inet_ntoa(addr_srv.sin_addr));
 
 #ifdef TESTING
 	LogPrint("APP UNDER TESTS!\n");
