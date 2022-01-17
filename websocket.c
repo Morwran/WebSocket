@@ -288,8 +288,6 @@ static void send_ws_text_msg(int fd, const char *msg)
 		size_send = msg_size + 4;
 	}
 
-	for(int i =0; i < size_send; printf("%x ", out_buf[i++]));
-	printf("\n");	
 	if(send(fd, out_buf, size_send, 0) == -1){
 		WrnPrint("Send msg is fail. %s", strerror(errno));
 	}
@@ -349,17 +347,17 @@ static void ws_proc(int fd){
 					unsigned char masking_key[4] = {0};
       	  unsigned char opcode;
       	  unsigned short payload_len;
-      	  printf("RCV: 0x%X%X\n", inbuf[0], inbuf[1]);
+      	  LogPrint("RCV: 0x%X%X\n", inbuf[0], inbuf[1]);
       	  opcode = WS_OPCODE_RCVD(inbuf);
-      	  printf("FIN: 0x%02X\n", WS_FIN_RCVD(inbuf));
-      	  printf("RSV1: 0x%02X\n", WS_RCV1_RCVD(inbuf));
-      	  printf("RSV2: 0x%02X\n", WS_RCV2_RCVD(inbuf));
-      	  printf("RSV3: 0x%02X\n", WS_RCV3_RCVD(inbuf));
-      	  printf("Opcode: 0x%02X\n", opcode);
+      	  LogPrint("FIN: 0x%02X\n", WS_FIN_RCVD(inbuf));
+      	  LogPrint("RSV1: 0x%02X\n", WS_RCV1_RCVD(inbuf));
+      	  LogPrint("RSV2: 0x%02X\n", WS_RCV2_RCVD(inbuf));
+      	  LogPrint("RSV3: 0x%02X\n", WS_RCV3_RCVD(inbuf));
+      	  LogPrint("Opcode: 0x%02X\n", opcode);
 	
       	  payload_len = WS_LENGTH_RCVD(inbuf);
-      	  printf("payload_len: %u 0x%x\n", payload_len, payload_len);
-      	  printf("Mask: 0x%02x\n", WS_MSK_RCVD(inbuf));
+      	  LogPrint("payload_len: %u 0x%x\n", payload_len, payload_len);
+      	  LogPrint("Mask: 0x%02x\n", WS_MSK_RCVD(inbuf));
 	
       	  if(opcode == WS_CLOSING_FRAME) // closing connection
       	  {
@@ -381,7 +379,6 @@ static void ws_proc(int fd){
       	   		if(payload_len == 126){
       	   			// unsigned short payload_len_s = *(unsigned short *)&inbuf[2];
       	   			payload_len = WS_LENGTH126_RCVD(inbuf);
-      	   			printf("payload_len: %u 0x%x\n", payload_len, payload_len);
       	   			memcpy(masking_key, &inbuf[4], sizeof masking_key);
 	
       	   		}
@@ -393,8 +390,6 @@ static void ws_proc(int fd){
       	      }
 	
       	      payload[payload_len] = '\0';
-					         		
-      	   		printf("PL: %s\n", payload);
 	
       	   		if(!strcmp(payload, "start tr"))
       	   			is_start_byte_tr = true;
@@ -416,7 +411,6 @@ static void ws_proc(int fd){
 				char dump_buf[10];
 				snprintf(dump_buf, sizeof dump_buf, "%d %d", t, sin_dump(t));
 				send_ws_text_msg(fd, dump_buf);
-				printf("is_start_byte_tr %u\n", is_start_byte_tr);
 				t++;
 #endif
 			}
@@ -425,7 +419,7 @@ static void ws_proc(int fd){
 }
 
 static void route(int fd, const char * buf){
-	printf("RCV: %s\n", buf);
+	LogPrint("RCV: %s\n", buf);
 
 	if(strstr(buf, "GET / ")) 
 	{
@@ -451,9 +445,7 @@ static void route(int fd, const char * buf){
 	{
 			char *ptrName = strstr(buf, "GET /");
 			ptrName += 5;
-			printf("ptrName: %s\n", ptrName);
 			char *fileName = strsep(&ptrName, " ");
-			printf("fileName %s\n", fileName);
 			size_t len_path = strlen(fileName) + strlen(SERVER_ROOT) + 1;
 			char *filePath = calloc(1, len_path);
 			if(!filePath){
@@ -461,10 +453,8 @@ static void route(int fd, const char * buf){
 				return;
 			}
 			snprintf(filePath, len_path, "%s%s", SERVER_ROOT, fileName);
-			printf("filePath %s\n", filePath);
 
 			if(!access(filePath, F_OK)){
-					printf("accessed!\n");
 					if(strstr(filePath, ".js")){
 						if(send(fd, response_js, (int)strlen(response_js), MSG_NOSIGNAL) == -1){
 							WrnPrint("Send response is fail. %s", strerror(errno));
@@ -487,7 +477,6 @@ static void route(int fd, const char * buf){
 					}
 					send_file(fd, filePath);
 			}else{
-				printf("not accessed!\n");
 				if(send(fd, response_403, (int)strlen(response_403), MSG_NOSIGNAL) == -1){
 					WrnPrint("Send response_403 is fail. %s", strerror(errno));
 				}
@@ -510,8 +499,6 @@ static void route(int fd, const char * buf){
 			}
 			snprintf(hash_key, hash_len, "%s%s", ws_key_cli, GUIDKey);
 
-			printf("__hash_key:%s:\n", hash_key);
-
 			unsigned char hash_sha1[SHA_DIGEST_LENGTH];
 			SHA1(hash_sha1, hash_key, strlen(hash_key));
 			free(hash_key);
@@ -521,9 +508,7 @@ static void route(int fd, const char * buf){
       base64_encode(hash_sha1, key_out, sizeof hash_sha1);
 
 			size_t len_resp = strlen(response_ws) + strlen(key_out) + 8;
-			printf("__len resp: %lu, len key: %lu %lu, len: %lu\n", 
-			strlen(response_ws), strlen(key_out), sizeof key_out, len_resp);
-			printf("__key out(%s):\n", key_out);
+
 			char *resp = calloc(1, len_resp);
 			if(!resp){
 				WrnPrint("Alloc mem err. %s", strerror(errno));
@@ -531,7 +516,7 @@ static void route(int fd, const char * buf){
 			}
 
 			snprintf(resp, len_resp, "%s%s\r\n\r\n", response_ws, key_out);
-			printf("__resp: %s", resp);
+
 			if(send(fd, resp, (int)strlen(resp), MSG_NOSIGNAL) == -1){
 				WrnPrint("Send response is fail. %s", strerror(errno));
 				return;
@@ -582,7 +567,7 @@ int main(int argc, char *argv[])
 
         }
         else if(opt == '?'){
-        	printf("unknown option: %c\n", optopt);
+        	fprintf(stderr,"unknown option: %c\n", optopt);
         	usage();
         	exit(-1);
         }
@@ -612,7 +597,7 @@ int main(int argc, char *argv[])
 	LogPrint("Server start at port: %d, addr %s", port, inet_ntoa(addr_srv.sin_addr));
 
 #ifdef TESTING
-	LogPrint("APP UNDER TESTS!\n");
+	LogPrint("APP UNDER TEST MODE!\n");
 #endif	
 
 	for(;;){
