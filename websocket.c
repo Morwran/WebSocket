@@ -15,6 +15,7 @@
 #include <sys/sendfile.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include <signal.h>
 //#include <openssl/sha.h>
 
 #ifdef TESTING
@@ -545,6 +546,7 @@ static void usage(){
 	fprintf(stderr,"\t Where -p is a websocket port (usually 86)\n");
 }
 
+
 int main(int argc, char *argv[])
 {
 	/* code */
@@ -554,24 +556,42 @@ int main(int argc, char *argv[])
 	pid_t child_pid;
 	struct sockaddr_in addr_cli, addr_srv;
 
-		while((opt = getopt(argc, argv, "p:")) != -1) 
-    { 
-        if(opt == 'p'){
-        	int tmp_p = atoi(optarg);
-        	if(tmp_p >=0 && tmp_p < 65536)
-        		port = tmp_p;
-        	else{
-        		usage();
-        		exit(-1);	
-        	}
+	void signal_handler (int signo)
+	{
+		if (signo == SIGINT || signo == SIGTERM){
+			close(listenfd);
+			close(connfd);
+		}
 
-        }
-        else if(opt == '?'){
-        	fprintf(stderr,"unknown option: %c\n", optopt);
-        	usage();
-        	exit(-1);
-        }
-    } 
+		exit (EXIT_SUCCESS);
+	}
+
+	if (signal (SIGINT, signal_handler) == SIG_ERR) {
+		print_and_exit("Can't handle SIGINT!\n");
+	}
+
+	if (signal (SIGTERM, signal_handler) == SIG_ERR) {
+		print_and_exit("Can't handle SIGTERM!\n");
+	}
+
+	while((opt = getopt(argc, argv, "p:")) != -1) 
+  { 
+    if(opt == 'p'){
+    	int tmp_p = atoi(optarg);
+      if(tmp_p >=0 && tmp_p < 65536)
+        port = tmp_p;
+      else{
+        usage();
+        exit(-1);	
+      }
+
+    }
+    else if(opt == '?'){
+      fprintf(stderr,"unknown option: %c\n", optopt);
+      usage();
+      exit(-1);
+    }
+  } 
 
 	socklen_t sin_len = sizeof(addr_cli);
 	listenfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
