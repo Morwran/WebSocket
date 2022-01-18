@@ -166,7 +166,6 @@
                 websocket.onmessage = function (message) {
                     
                     if(!$('.test').hasClass('on')){
-                        console.log(message.data);
                         if(message.data != "stop tr")
                             $('v').append($('<p>', { text: message.data }));
                     }
@@ -175,7 +174,7 @@
                         
                         var x = parseInt(rcv[0], 10);  // current time
                         var y = parseInt(rcv[1], 10) / 100;
-                        console.log("x y:", x, y);
+
                         if(data.length > 25)
                             data.shift();
                         data.push([x,y]);
@@ -271,7 +270,6 @@
           <div class='knopka upd'>Update</div>
           <div class='knopka hi'>Say Hi...</div>
           <div class='knopka test off'>Test On</div>
-          <!-- <div class='knopka Send'>Send</div> -->
           <div class='knopka close'>Close</div>
 
 
@@ -301,12 +299,6 @@
             </div>
         </div>
 
-<!--         <div>
-          <input type="text" class="input_txt" placeholder="Start typing..." value="" id="text-count"/>
-        </div>
-        <div>
-            <span id="count"></span>
-        </div> -->
         <v></v>
         <div id="myChart" style="width:800px; height:400px; display: block; opacity: 0; margin-top: 50px;"></div>
 <!--         <div>
